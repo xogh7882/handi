@@ -9,7 +9,7 @@ version = '0.0.1-SNAPSHOT'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(23)
+		languageVersion = JavaLanguageVersion.of(17)
 	}
 }
 
@@ -50,6 +50,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.java-websocket:Java-WebSocket:1.5.4'
 
+
+	//Firebase
+	implementation 'com.google.firebase:firebase-admin:9.2.0'
 }
 
 
