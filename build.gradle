@@ -32,7 +32,7 @@ dependencies {
 	// runtimeOnly 'org.postgresql:postgresql'
 	
 	// H2 Database for development
-	runtimeOnly 'com.h2database:h2'
+//	runtimeOnly 'com.h2database:h2'
 	
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
@@ -53,6 +53,9 @@ dependencies {
 
 	//Firebase
 	implementation 'com.google.firebase:firebase-admin:9.2.0'
+
+	// postgreSQL
+	implementation 'org.postgresql:postgresql'
 }
 
 

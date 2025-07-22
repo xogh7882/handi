@@ -1,19 +1,20 @@
 package com.handi.backend.service;
 
-import com.handi.backend.entity.Medications;
-import com.handi.backend.entity.Organizations;
-import com.handi.backend.entity.Users;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.handi.backend.entity.*;
 import com.handi.backend.enums.MedicationSchedule;
-import com.handi.backend.repository.MedicationsRepository;
-import com.handi.backend.repository.OrganizationsRepository;
-import com.handi.backend.repository.SeniorUserRelationsRepository;
-import com.handi.backend.repository.UsersRepository;
+import com.handi.backend.enums.Role;
+import com.handi.backend.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -23,153 +24,161 @@ public class NotificationScheduleService {
     private final OrganizationsRepository organizationsRepository;
     private final UsersRepository usersRepository;
     private final SeniorUserRelationsRepository seniorUserRelationsRepository;
+    private final MedicationSchedulesRepository medicationSchedulesRepository;
     private final MedicationsRepository medicationsRepository;
-    private final FcmService fcmService;
-
+    private final SeniorsRepository seniorsRepository;
     private final Set<String> sentNotifications = ConcurrentHashMap.newKeySet();
 
-    @Scheduled(fixedRate = 1200000) // 20분 = 1,200,000 ms
+    @Scheduled(fixedRate = 900000) // 15분 = 900,000 ms
     public void checkAndSendNotifications() {
         LocalTime now = LocalTime.now();
+        LocalDate today = LocalDate.now();
 
-        List<Organizations> organizations = organizationsRepository.findAll();
+        List<Users> employees = usersRepository.findAll().stream()
+                .filter(user -> Role.EMPLOYEE.equals(user.getRole()))
+                .toList();
 
-        for (Organizations org : organizations) {
-            checkMealNotifications(org, now);
+        for (Users employee : employees) {
+            checkEmployeeMedicationNotifications(employee, now, today);
         }
     }
 
-    private void checkMealNotifications(Organizations org, LocalTime now) {
-        String today = java.time.LocalDate.now().toString();
 
-        // 아침식사 30분 전
-        if (shouldSendNotification(org.getBreakfastTime(), now)) {
-            String notificationKey = org.getId() + "_breakfast_" + today;
+    private void checkEmployeeMedicationNotifications(Users employee, LocalTime now, LocalDate today) {
 
-            // 중복방지 ( 이미 알림을 보냈을 경우 안보내도록 해야함 )
-            if (!sentNotifications.contains(notificationKey)) {
-                sendMealNotification(org, "아침식사", "아침 식사 30분 전 입니다. 약을 투약해주세요");
-                checkMedicationNotification(org, MedicationSchedule.BEFORE_BREAKFAST, "아침 식전 투약");
+        // employee 담당 환자 리스트 조회
+        List<Integer> seniorIds = seniorUserRelationsRepository.findSeniorIdsByUserId(employee.getId());
 
-                // 중복 관리를 위해 추가
-                sentNotifications.add(notificationKey);
-            }
-        }
+        for (Integer seniorId : seniorIds) {
+            Seniors senior = seniorsRepository.findById(seniorId).orElse(null);
+            if (senior == null) continue;
 
-        // 아침식사 30분 후
-        if (shouldSendNotification(org.getBreakfastTime().plusMinutes(30), now)) {
-            String notificationKey = org.getId() + "_after_breakfast_" + today;
-            if (!sentNotifications.contains(notificationKey)) {
-                sendMealNotification(org, "아침식사", "아침 식사 30분 후 입니다. 약을 투약해주세요");
-                checkMedicationNotification(org, MedicationSchedule.AFTER_BREAKFAST, "아침 식후 투약");
-                sentNotifications.add(notificationKey);
-            }
-        }
+            // 해당 환자의 투약 일정 조회 (현재 날짜가 기간 내에 있는 것만)
+            List<MedicationSchedules> activeSchedules = medicationSchedulesRepository.findAll().stream()
+                    .filter(schedule -> schedule.getSenior().getId().equals(seniorId))
+                    .filter(schedule -> isDateInRange(today, schedule.getMedicationStartdate(), schedule.getMedicationEnddate()))
+                    .toList();
 
-
-        // 점심식사 30분 전
-        if (shouldSendNotification(org.getLunchTime(), now)) {
-            String notificationKey = org.getId() + "_lunch_" + today;
-            if (!sentNotifications.contains(notificationKey)) {
-                sendMealNotification(org, "점심식사", "점심 식사 30분 전 입니다. 약을 투약해주세요");
-                checkMedicationNotification(org, MedicationSchedule.BEFORE_LUNCH, "점심 식전 투약");
-                sentNotifications.add(notificationKey);
-            }
-        }
-
-        // 점심식사 30분 후
-        if (shouldSendNotification(org.getLunchTime().plusMinutes(30), now)) {
-            String notificationKey = org.getId() + "_after_lunch_" + today;
-            if (!sentNotifications.contains(notificationKey)) {
-                sendMealNotification(org, "점심식사", "점심 식사 30분 후 입니다. 약을 투약해주세요");
-                checkMedicationNotification(org, MedicationSchedule.AFTER_LUNCH, "점심 식후 투약");
-                sentNotifications.add(notificationKey);
-            }
-        }
-
-        // 저녁식사 30분 전
-        if (shouldSendNotification(org.getDinnerTime(), now)) {
-            String notificationKey = org.getId() + "_dinner_" + today;
-            if (!sentNotifications.contains(notificationKey)) {
-                sendMealNotification(org, "저녁식사", "저녁 식사 30분 전 입니다. 약을 투약해주세요");
-                checkMedicationNotification(org, MedicationSchedule.BEFORE_DINNER, "저녁 식전 투약");
-                sentNotifications.add(notificationKey);
-            }
-        }
-
-        // 저녁식사 30분 후
-        if (shouldSendNotification(org.getDinnerTime().plusMinutes(30), now)) {
-            String notificationKey = org.getId() + "_after_dinner_" + today;
-            if (!sentNotifications.contains(notificationKey)) {
-                sendMealNotification(org, "저녁식사", "저녁 식사 30분 후 입니다. 약을 투약해주세요");
-                checkMedicationNotification(org, MedicationSchedule.AFTER_DINNER, "저녁 식후 투약");
-                sentNotifications.add(notificationKey);
-            }
-        }
-
-        // 취침 30분 전
-        if (shouldSendNotification(org.getSleepTime(), now)) {
-            String notificationKey = org.getId() + "_sleep_" + today;
-            if (!sentNotifications.contains(notificationKey)) {
-                sendMealNotification(org, "취침시간", "취침 30분 전 입니다. 약을 투약해주세요");
-                checkMedicationNotification(org, MedicationSchedule.BEDTIME, "취침 전 투약");
-                sentNotifications.add(notificationKey);
+            for (MedicationSchedules schedule : activeSchedules) {
+                checkMedicationTimings(employee, senior, schedule, now, today);
             }
         }
     }
 
-    private boolean shouldSendNotification(LocalTime mealTime, LocalTime now) {
-        if (mealTime == null) return false;
+    private void checkMedicationTimings(Users employee, Seniors senior, MedicationSchedules schedule, LocalTime now, LocalDate today) {
 
-        // 30분 전 시간 계산
-        LocalTime notificationTime = mealTime.minusMinutes(30);
+        // 해당 환자의 소속 기관 정보 조회
+        Organizations organization = organizationsRepository.findById(Integer.parseInt(employee.getOrganizationId())).orElse(null);
+        if (organization == null) return;
 
+        // 각 투약 시간대별로 확인
+        checkSpecificMedicationTiming(employee, senior, schedule, MedicationSchedule.BEFORE_BREAKFAST,
+                organization.getBreakfastTime(), "아침 식전", now, today, -30);
+
+        checkSpecificMedicationTiming(employee, senior, schedule, MedicationSchedule.AFTER_BREAKFAST,
+                organization.getBreakfastTime(), "아침 식후", now, today, 30);
+
+        checkSpecificMedicationTiming(employee, senior, schedule, MedicationSchedule.BEFORE_LUNCH,
+                organization.getLunchTime(), "점심 식전", now, today, -30);
+
+        checkSpecificMedicationTiming(employee, senior, schedule, MedicationSchedule.AFTER_LUNCH,
+                organization.getLunchTime(), "점심 식후", now, today, 30);
+
+        checkSpecificMedicationTiming(employee, senior, schedule, MedicationSchedule.BEFORE_DINNER,
+                organization.getDinnerTime(), "저녁 식전", now, today, -30);
+
+        checkSpecificMedicationTiming(employee, senior, schedule, MedicationSchedule.AFTER_DINNER,
+                organization.getDinnerTime(), "저녁 식후", now, today, 30);
+
+        checkSpecificMedicationTiming(employee, senior, schedule, MedicationSchedule.BEDTIME,
+                organization.getSleepTime(), "취침 전", now, today, -30);
+    }
+
+    private void checkSpecificMedicationTiming(Users employee, Seniors senior, MedicationSchedules schedule,
+                                               MedicationSchedule medicationSchedule, LocalTime mealTime,
+                                               String timingDescription, LocalTime now, LocalDate today, int minuteOffset) {
+
+        if (mealTime == null) return;
+
+        // 해당 투약 시간대에 투약이 있는지 확인
+        List<Medications> medications = medicationsRepository.findBySeniorIdAndSchedule(senior.getId(), medicationSchedule);
+        if (medications.isEmpty()) return;
+
+        // 알림 시간 계산
+        LocalTime notificationTime = mealTime.plusMinutes(minuteOffset);
+
+        // 현재 시간이 알림 시간과 1분 이내에 있는지 확인
+        if (!shouldSendNotification(notificationTime, now)) return;
+
+        // 중복 알림 방지를 위한 키 생성
+        String notificationKey = employee.getId() + "_" + senior.getId() + "_" + medicationSchedule.name() + "_" + today;
+
+        if (sentNotifications.contains(notificationKey)) return;
+
+        // FCM 토큰이 있는 경우에만 알림 전송
+        if (employee.getFcmToken() != null && !employee.getFcmToken().trim().isEmpty()) {
+            String title = "투약 알림";
+            String message = String.format("%s님에게 %s 약을 투여해야 합니다. (%s)",
+                    senior.getName(), timingDescription, schedule.getMedicationName());
+
+            try {
+                sendFcmNotification(employee.getFcmToken(), title, message, senior);
+                System.out.println("투약 알림 전송 성공: " + employee.getName() + " -> " + message);
+
+                // 중복 방지를 위해 기록
+                sentNotifications.add(notificationKey);
+
+            } catch (Exception e) {
+                System.err.println("FCM 알림 전송 실패: " + employee.getName() + " - " + e.getMessage());
+            }
+        }
+    }
+
+    private boolean shouldSendNotification(LocalTime notificationTime, LocalTime now) {
         // 현재 시간이 알림 시간과 1분 이내에 있는지 확인
         return Math.abs(now.toSecondOfDay() - notificationTime.toSecondOfDay()) <= 60;
     }
 
-    private void sendMealNotification(Organizations org, String mealType, String message) {
+
+
+    private boolean isDateInRange(LocalDate currentDate, String startDateStr, String endDateStr) {
         try {
-            List<Users> users = usersRepository.findAll().stream()
-                    .filter(user -> org.getId().toString().equals(user.getOrganizationId()))
-                    .toList();
+            if (startDateStr == null || endDateStr == null) return false;
 
-            String title = org.getName() + " " + mealType + " 알림";
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            LocalDate startDate = LocalDate.parse(startDateStr, formatter);
+            LocalDate endDate = LocalDate.parse(endDateStr, formatter);
 
-            for (Users user : users) {
-                fcmService.sendToUserLatestDevice(user.getId().toString(), title, message);
-                System.out.println("식사 알림 전송: " + user.getName() + " - " + title + ": " + message);
-            }
-
+            return !currentDate.isBefore(startDate) && !currentDate.isAfter(endDate);
         } catch (Exception e) {
-            System.err.println("식사 알림 전송 실패: " + e.getMessage());
+            System.err.println("날짜 파싱 오류: " + e.getMessage());
+            return false;
         }
     }
 
-    private void checkMedicationNotification(Organizations org, MedicationSchedule scheduleType, String medicationType) {
+    private void sendFcmNotification(String fcmToken, String title, String message, Seniors senior) {
+        // FcmService의 기존 메서드를 FCM 토큰으로 직접 호출하도록 수정이 필요
+        // 여기서는 직접 FCM 메시지를 보내는 방식으로 구현
         try {
-            List<Users> users = usersRepository.findAll().stream()
-                    .filter(user -> org.getId().toString().equals(user.getOrganizationId()))
-                    .toList();
 
-            for (Users user : users) {
-                List<Integer> seniorIds = seniorUserRelationsRepository.findSeniorIdsByUserId(user.getId());
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> dataMap = new HashMap<>();
+            dataMap.put("seniorId", senior.getId());
+            String dataJson = mapper.writeValueAsString(dataMap);
 
-                for (Integer seniorId : seniorIds) {
-                    List<Medications> medications = medicationsRepository.findBySeniorIdAndSchedule(seniorId, scheduleType);
+            com.google.firebase.messaging.Message fcmMessage = com.google.firebase.messaging.Message.builder()
+                    .setToken(fcmToken)
+                    .setNotification(com.google.firebase.messaging.Notification.builder()
+                            .setTitle(title)
+                            .setBody(message)
+                            .build())
+                    .putData("type", "medicine")
+                    .putData("data", dataJson)
+                    .build();
 
-                    if (!medications.isEmpty()) {
-                        String title = medicationType + " 알림";
-                        String message = medications.size() + "개의 투약이 예정되어 있습니다.";
-
-                        fcmService.sendToUserLatestDevice(user.getId().toString(), title, message);
-                        System.out.println("투약 알림 전송: " + user.getName() + " - " + title + ": " + message);
-                    }
-                }
-            }
-
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().send(fcmMessage);
         } catch (Exception e) {
-            System.err.println("투약 알림 전송 실패: " + e.getMessage());
+            throw new RuntimeException("FCM 메시지 전송 실패", e);
         }
     }
 
