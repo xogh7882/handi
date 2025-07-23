@@ -25,7 +25,6 @@ public class Users {
 
     // 소속기관
     @Schema(description = "소속기관")
-    @Column(name = "organization_id", nullable = false)
     private String organizationId;
 
     // email
@@ -46,7 +45,6 @@ public class Users {
     // Role ( EMPLOYEE, ADMIN, GUARDIAN )
     @Schema(description = "역할")
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Role role;
 
     // 전화번호
