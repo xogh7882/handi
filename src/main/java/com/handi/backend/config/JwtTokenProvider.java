@@ -43,7 +43,7 @@ public class JwtTokenProvider {
     }
 
     // Refresh Token 생성 (사용자 정보 포함 X , 랜덤 문자열)
-    public String generateRefreshToken() {
+    public String generateRefreshToken(Integer userId) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + refreshTokenExpiration);
 
@@ -55,11 +55,27 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .subject("refresh")           // 고정값 (개인정보 아님)
                 .claim("type", "refresh")     // 토큰 타입
-                .claim("jti", tokenId)        // JWT ID (랜덤값)
+                .claim("userId", userId)
+                .claim("refreshId", tokenId)        // JWT ID (랜덤값)
                 .issuedAt(now)               // 발급 시간
                 .expiration(expiration)       // 만료 시간
                 .signWith(secretKey)         // 서명
                 .compact();
+    }
+
+    // Refrsh Token에서 refreshId 추출
+    public String getRefreshIdFromToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return claims.get("refreshId", String.class);
+        } catch (Exception e) {
+            log.error("토큰에서 RefreshId 추출 실패: {}", e.getMessage());
+            return null;
+        }
     }
 
 
