@@ -60,7 +60,8 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             String userEmail = (String) oAuth2User.getAttributes().get("userEmail");
             String userName = (String) oAuth2User.getAttributes().get("userName");
 
-            Users user = usersRepository.findByEmail(userEmail);
+            Users user = usersRepository.findById(userId).orElse(null);
+
             if (user == null) {
                 log.error("OAuth2 로그인 성공했지만 사용자를 찾을 수 없습니다: {}", userEmail);
                 return UriComponentsBuilder.fromUriString(authorizedRedirectUri)

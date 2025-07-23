@@ -9,7 +9,6 @@ import com.handi.backend.repository.UsersRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -84,7 +83,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private Users processUser(OAuth2Response oAuth2Response) {
         String email = oAuth2Response.getEmail();
 
-        Users finduser = usersRepository.findByEmail(email);
+        Users finduser = usersRepository.findByEmailAndSocialProvider(email, oAuth2Response.getSocialProvider());
         if(finduser == null){
             log.info("신규 사용자 : email={}", email);
             return createNewUser(oAuth2Response);
