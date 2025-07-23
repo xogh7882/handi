@@ -4,13 +4,18 @@ import lombok.RequiredArgsConstructor;
 
 import java.util.Map;
 
-@RequiredArgsConstructor
 public class KakaoResponse implements  OAuth2Response{
 
     private final Map<String, Object> attributes;
     private final Map<String, Object> kakaoAccount;
     private final Map<String, Object> properties;
 
+
+    public KakaoResponse(Map<String, Object> attributes) {
+        this.attributes = attributes;
+        this.kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+        this.properties = (Map<String, Object>) attributes.get("properties");
+    }
 
     @Override
     public String getSocialProvider() {
@@ -29,6 +34,7 @@ public class KakaoResponse implements  OAuth2Response{
 
     @Override
     public String getName() {
+        if (properties == null) return null;
         return (String) properties.get("nickname");
     }
 }

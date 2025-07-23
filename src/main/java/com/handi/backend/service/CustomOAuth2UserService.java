@@ -58,7 +58,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         attributes.put("userId", user.getId());
         attributes.put("userEmail", user.getEmail());
         attributes.put("userName", user.getName());
-        attributes.put("userRole", user.getRole().name());
 
         return new OAuth2User() {
             @Override
@@ -68,9 +67,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
             @Override
             public Collection<? extends GrantedAuthority> getAuthorities() {
-                return Collections.singletonList(
-                        new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
-                );
+//                return Collections.singletonList(
+//                        new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
+//                );
+                return null;
             }
 
             @Override
@@ -104,9 +104,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 return new NaverResponse(response);
 
             case "kakao":
-                Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
-                Map<String, Object> properties = (Map<String, Object>) attributes.get("properties");
-                return new KakaoResponse(attributes, kakaoAccount, properties);
+                return new KakaoResponse(attributes);
 
             default:
                 return null;

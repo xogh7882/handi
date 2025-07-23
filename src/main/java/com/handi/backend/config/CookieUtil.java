@@ -13,8 +13,8 @@ public class CookieUtil {
 
     private String cookieDomain;
 
-    private final Integer accessTokenExpiration = 1000 * 60 * 30;  // 30분
-    private final Integer refreshTokenExpiration = 1000 * 60 * 60 * 24 * 7; // 7일
+    private final Integer accessTokenExpiration = 60 * 30;  // 30분
+    private final Integer refreshTokenExpiration = 60 * 60 * 24 * 7; // 7일
 
     // Access Token Cookie 생성
     public void createAccessTokenCookie(HttpServletResponse response, String accessToken) {

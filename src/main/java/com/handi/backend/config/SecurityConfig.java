@@ -2,6 +2,7 @@ package com.handi.backend.config;
 
 import com.handi.backend.service.CustomOAuth2UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -17,6 +18,7 @@ public class SecurityConfig {
     private final CustomSuccessHandler customSuccessHandler;
     private final CorsConfig corsConfig;
 
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 // CSRF 비활성화

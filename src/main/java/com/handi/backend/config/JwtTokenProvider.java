@@ -26,14 +26,13 @@ public class JwtTokenProvider {
 
 
     // Access Token 생성
-    public String generateAccessToken(String email, String name, String role, Integer userId) {
+    public String generateAccessToken(String email, String name, Integer userId) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + accessTokenExpiration);
 
         return Jwts.builder()
                 .subject(email)                   // subject : JWT 토큰이 누구것인지 확인
                 .claim("type", "access")
-                .claim("role", role)
                 .claim("name", name)
                 .claim("userId", userId)
                 .issuedAt(now)
@@ -109,20 +108,6 @@ public class JwtTokenProvider {
         }
     }
 
-    // 토큰에서 역할 추출
-    public String getRoleFromToken(String token) {
-        try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-            return claims.get("role", String.class);
-        } catch (Exception e) {
-            log.error("토큰에서 역할 추출 실패: {}", e.getMessage());
-            return null;
-        }
-    }
 
     // 토큰에서 사용자 ID 추출
     public Integer getUserIdFromToken(String token) {

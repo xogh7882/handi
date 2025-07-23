@@ -59,7 +59,6 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             Integer userId = (Integer) oAuth2User.getAttributes().get("userId");
             String userEmail = (String) oAuth2User.getAttributes().get("userEmail");
             String userName = (String) oAuth2User.getAttributes().get("userName");
-            String userRole = (String) oAuth2User.getAttributes().get("userRole");
 
             Users user = usersRepository.findByEmail(userEmail);
             if (user == null) {
@@ -77,7 +76,6 @@ public class CustomSuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                     .queryParam("success", "true")
                     .queryParam("userId", userId)
                     .queryParam("name", URLEncoder.encode(userName != null ? userName : "", StandardCharsets.UTF_8))
-                    .queryParam("role", userRole)
                     .build().toUriString();
 
             log.info("OAuth2 로그인 성공 - userId: {}, email: {}, 리다이렉트: {}", userId, userEmail, authorizedRedirectUri);
