@@ -27,9 +27,10 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
 	
 	// PostgreSQL (commented out for initial setup)
-	// runtimeOnly 'org.postgresql:postgresql'
+	 runtimeOnly 'org.postgresql:postgresql'
 	
 	// H2 Database for development
 //	runtimeOnly 'com.h2database:h2'
@@ -45,6 +46,9 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+	// Jackson for JSON processing
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
 
 	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -54,8 +58,12 @@ dependencies {
 	//Firebase
 	implementation 'com.google.firebase:firebase-admin:9.2.0'
 
-	// postgreSQL
-	implementation 'org.postgresql:postgresql'
+
+	// JWT Token
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+	implementation 'io.jsonwebtoken:jjwt-impl:0.12.3'
+	implementation 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+
 }
 
 

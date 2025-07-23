@@ -26,6 +26,14 @@ public class Consultations {
     @JoinColumn(name = "auto_schedule_match_id", nullable = false)
     private AutoScheduleMatches autoScheduleMatch;
 
+    // 상담 제목
+    @Column(name = "title")
+    private String title;
+
+    // 병원 분류
+    @Column(name = "classification")
+    private String classification;
+
     // 상담 내용 정리 ( whisper AI 사용 )
     private String content;
 

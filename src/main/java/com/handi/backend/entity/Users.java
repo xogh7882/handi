@@ -62,11 +62,7 @@ public class Users {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    // Access Token
-    @Schema(description = "Access Token")
-    @Column(name = "access_token")
-    private String accessToken;
-
+    // FCM Token
     @Schema(description = "FCM Token")
     @Column(name="fcm_token")
     private String fcmToken;

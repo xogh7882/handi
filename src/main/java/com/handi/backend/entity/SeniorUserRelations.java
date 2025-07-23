@@ -30,12 +30,12 @@ public class SeniorUserRelations {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("userId")
-    @JoinColumn(name = "id")
+    @JoinColumn(name = "user_id")
     private Users user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("seniorId")
-    @JoinColumn(name = "id2")
+    @JoinColumn(name = "senior_id")
     private Seniors senior;
 
     // 생성일자 default
