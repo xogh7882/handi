@@ -1,7 +1,7 @@
 package com.handi.backend.service;
 
-import com.handi.backend.config.CookieUtil;
-import com.handi.backend.config.JwtTokenProvider;
+import com.handi.backend.util.CookieUtil;
+import com.handi.backend.util.JwtTokenProvider;
 import com.handi.backend.entity.Users;
 import com.handi.backend.repository.UsersRepository;
 import jakarta.servlet.http.HttpServletRequest;
