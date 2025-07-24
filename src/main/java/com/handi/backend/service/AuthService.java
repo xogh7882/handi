@@ -1,9 +1,9 @@
 package com.handi.backend.service;
 
-import com.handi.backend.util.CookieUtil;
-import com.handi.backend.util.JwtTokenProvider;
 import com.handi.backend.entity.Users;
 import com.handi.backend.repository.UsersRepository;
+import com.handi.backend.util.CookieUtil;
+import com.handi.backend.util.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -11,8 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -30,51 +28,54 @@ public class AuthService {
 
 
     // Access Token 이 없을 때, 쿠키에서 Refresh Token 가져와서 Access Token 발급하기
-    public Map<String, Object> refreshTokens(HttpServletRequest request, HttpServletResponse response) {
-        // 1. 쿠키에서 Refresh Token 추출
-        String refreshToken = cookieUtil.getCookieValue(request, "accessToken")
-                .orElseThrow(() -> new IllegalArgumentException("accessToken 쿠키에 없음"));
+    public boolean refreshAccessToken(HttpServletRequest request, HttpServletResponse response) {
+        try{
+            // 1. 쿠키에서 Refresh Token 추출
+            String refreshToken = cookieUtil.getCookieValue(request, "accessToken")
+                    .orElseThrow(() -> new IllegalArgumentException("accessToken 쿠키에 없음"));
 
-        // 2. Refresh Token 유효성 검증
-        if(!jwtTokenProvider.validateToken(refreshToken)) {
-            throw new IllegalArgumentException("유효하지 않은 토큰");
+            // 2. Refresh Token 유효성 검증
+            if(!jwtTokenProvider.validateToken(refreshToken)) {
+                throw new IllegalArgumentException("유효하지 않은 토큰");
+            }
+
+            // 3. Refresh Token 에서 사용자 ID 추출
+            String refreshId = jwtTokenProvider.getRefreshIdFromToken(refreshToken);
+            Integer userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+            if(userId == null) {
+                throw new IllegalArgumentException("Refresh Token에서 사용자 ID 없음");
+            }
+
+            // 4. Redis에서 해당 사용자의 Refresh Token 유효성 확인
+            String storedTokenKey = REFRESH_TOKEN_PREFIX + userId + ":" +  refreshId;
+
+            log.info(storedTokenKey);
+            Boolean tokenExists = redisTemplate.hasKey(storedTokenKey);
+
+            if(!tokenExists) {
+                throw new IllegalArgumentException("만료된 refresh token");
+            }
+
+            // 5. 사용자 정보 조회
+            Users user = usersRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("사용자 없음"));
+
+            // 6. 새로운 Access Token 생성
+            String newAccessToken = jwtTokenProvider.generateAccessToken(
+                    user.getEmail(),
+                    user.getName(),
+                    user.getId()
+            );
+
+            // 7. 새로운 Access Token 쿠키에 저장
+            cookieUtil.createAccessTokenCookie(response, newAccessToken);
+
+            log.info("Access Token 재발급 성공: userId={}", userId);
+            return true;
+        } catch (Exception e) {
+            log.error("Access Token 재발급 실패: {}", e.getMessage());
+            return false;
         }
-
-        // 3. Refresh Token 에서 사용자 ID 추출
-        String refreshId = jwtTokenProvider.getRefreshIdFromToken(refreshToken);
-        Integer userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
-        if(refreshId == null) {
-            throw new IllegalArgumentException("Refresh Token에서 사용자 ID 없음");
-        }
-
-        // 4. Redis에서 해당 사용자의 Refresh Token 유효성 확인
-        String storedTokenKey = REFRESH_TOKEN_PREFIX + userId + ":" +  refreshId;
-        Boolean tokenExists = redisTemplate.hasKey(storedTokenKey);
-
-        if(!Boolean.TRUE.equals(tokenExists)) {
-            throw new IllegalArgumentException("만료된 refresh token");
-        }
-
-        // 5. 사용자 정보 조회
-        Users user = usersRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자 없음"));
-
-        // 6. 새로운 Access Token 생성
-        String newAccessToken = jwtTokenProvider.generateAccessToken(
-                user.getEmail(),
-                user.getName(),
-                user.getId()
-        );
-
-        // 7. 새로운 Access Token 쿠키에 저장
-        cookieUtil.createAccessTokenCookie(response, newAccessToken);
-
-        // 8. 응답 데이터 생성
-        Map<String, Object> result = new HashMap<>();
-        result.put("success", true);
-        result.put("message", "새로운 Access Token 생성");
-
-        return result;
     }
 
     // logout ( 쿠키 + Redis 삭제 )
@@ -120,7 +121,8 @@ public class AuthService {
 
 
     private void storeRefreshToken(String refreshToken, Integer userId) {
-        String tokenKey = REFRESH_TOKEN_PREFIX + userId + ":" + refreshToken;
+        String refreshId = jwtTokenProvider.getRefreshIdFromToken(refreshToken);
+        String tokenKey = REFRESH_TOKEN_PREFIX + userId + ":" + refreshId;
         redisTemplate.opsForValue().set(
                 tokenKey,
                 "valid",
@@ -128,5 +130,16 @@ public class AuthService {
                 TimeUnit.DAYS
         );
         log.debug("Redis에 Refresh Token 저장: userId={}", userId);
+    }
+
+    // Access, Refresh 쿠키 삭제
+    public void clearAuthCookies(HttpServletResponse response) {
+        try {
+            cookieUtil.deleteAllAuthCookies(response);
+            log.info("인증 쿠키 정리 완료");
+        } catch (Exception e) {
+            log.error("쿠키 정리 실패: {}", e.getMessage());
+            throw new RuntimeException("쿠키 정리 중 오류가 발생했습니다.");
+        }
     }
 }

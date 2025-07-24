@@ -71,7 +71,7 @@ public class JwtTokenProvider {
                     .getPayload();
             return claims.get("refreshId", String.class);
         } catch (Exception e) {
-            log.error("토큰에서 RefreshId 추출 실패: {}", e.getMessage());
+            log.error("토큰에서 refreshId 추출 실패: {}", e.getMessage());
             return null;
         }
     }

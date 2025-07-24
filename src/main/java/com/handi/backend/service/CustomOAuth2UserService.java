@@ -27,7 +27,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         // 1. OAuth2 정보 가져오기
         OAuth2User oAuth2User = super.loadUser(userRequest);
 
-        // 2. 프랫폼 구분
+        // 2. 플랫폼 구분
         String registrationId = userRequest.getClientRegistration().getRegistrationId();
 
         // 3. 플랫폼별 파싱

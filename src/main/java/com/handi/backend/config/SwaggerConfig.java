@@ -38,6 +38,18 @@ public class SwaggerConfig {
                                 - ✅ WebRTC 및 음성 파일 업로드
                                 - ✅ 사용자 스케줄 알림
 
+
+                                ### Social Login
+                                - ✅ 다른 탭에서 로그인이 되어있는 경우 로그인 페이지로 이동하지 않고 바로 로그인 되므로 시크릿 모드로 접속시 확인 가능
+                                - ✅ 쿠키에 Access Token, Refresh Token 생성시 성공
+                                - ✅ https://www.jwt.io 에서 토큰값 확인 가능
+                                
+                                http://localhost:8080/oauth2/authorization/google
+                                
+                                http://localhost:8080/oauth2/authorization/naver
+                                
+                                http://localhost:8080/oauth2/authorization/kakao
+                                
                                 ---
                                 **참고 페이지**
                                 
