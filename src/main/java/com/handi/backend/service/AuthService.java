@@ -30,9 +30,9 @@ public class AuthService {
     // Access Token 이 없을 때, 쿠키에서 Refresh Token 가져와서 Access Token 발급하기
     public boolean refreshAccessToken(HttpServletRequest request, HttpServletResponse response) {
         try{
-            // 1. 쿠키에서 Refresh Token 추출
-            String refreshToken = cookieUtil.getCookieValue(request, "accessToken")
-                    .orElseThrow(() -> new IllegalArgumentException("accessToken 쿠키에 없음"));
+
+            String refreshToken = cookieUtil.getCookieValue(request, "refreshToken")
+                    .orElseThrow(() -> new IllegalArgumentException("refreshToken 쿠키에 없음"));
 
             // 2. Refresh Token 유효성 검증
             if(!jwtTokenProvider.validateToken(refreshToken)) {
@@ -85,7 +85,8 @@ public class AuthService {
 
             // Redis에서 refresh 삭제
             if(refreshToken != null) {
-                String tokenKey =  REFRESH_TOKEN_PREFIX + userId + ":" +  refreshToken;
+                String refreshId = jwtTokenProvider.getRefreshIdFromToken(refreshToken);
+                String tokenKey =  REFRESH_TOKEN_PREFIX + userId + ":" +  refreshId;
                 redisTemplate.delete(tokenKey);
             }
 

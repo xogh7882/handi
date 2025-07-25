@@ -1,5 +1,6 @@
 package com.handi.backend.util;
 
+
 import com.handi.backend.service.AuthService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -14,8 +15,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-
-// OncePerRequestFilter = 한 번의 Request에 대해 한번만 실행되는 Filter
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -25,7 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final CookieUtil cookieUtil;
     private final AuthService authService;
 
-    // 인증이 필요없는 경로
+    // 인증이 필요하지 않은 경로들
     private static final List<String> EXCLUDED_PATHS = Arrays.asList(
             "/swagger-ui",
             "/api-docs",
@@ -49,12 +48,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
+
         try {
             // 1. Access Token 확인
             String accessToken = cookieUtil.getCookieValue(request, "accessToken").orElse(null);
 
             if (accessToken != null && jwtTokenProvider.validateToken(accessToken)) {
-                // Access Token 유효
+                // Access Token이 유효한 경우 - 인증 성공
                 log.debug("Access Token 유효 - 인증 성공");
                 setAuthenticationContext(request, accessToken);
                 filterChain.doFilter(request, response);
@@ -62,6 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             // 2. Access Token이 없거나 만료된 경우 - Refresh Token 확인
+
             String refreshToken = cookieUtil.getCookieValue(request, "refreshToken").orElse(null);
 
             if (refreshToken != null && jwtTokenProvider.validateRefreshToken(refreshToken)) {
@@ -117,5 +118,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json;charset=UTF-8");
         response.getWriter().write("{\"error\":\"UNAUTHORIZED\",\"message\":\"로그인이 필요합니다.\"}");
-    }/**/
+    }
 }
